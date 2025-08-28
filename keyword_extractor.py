@@ -7,24 +7,30 @@ from typing import List, Set
 import re
 
 # Deps:
-# pip install keybert sentence-transformers yake spacy
-# python -m spacy download en_core_web_sm
+# pip install keybert sentence-transformers yake nltk
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer
 import yake
-import spacy
+import nltk
+from nltk import pos_tag, word_tokenize
+from nltk.chunk import ne_chunk
 
 # --- Models (load lazily) ---
-_nlp = None
 _embedder = None
 _kw = None
 _yake = None
 
 def _get_nlp():
-    global _nlp
-    if _nlp is None:
-        _nlp = spacy.load("en_core_web_sm", disable=["ner", "lemmatizer"])
-    return _nlp
+    # Use NLTK instead of spaCy
+    try:
+        nltk.download('punkt', quiet=True)
+        nltk.download('averaged_perceptron_tagger', quiet=True)
+        nltk.download('maxent_ne_chunker', quiet=True)
+        nltk.download('words', quiet=True)
+        return True
+    except Exception as e:
+        print(f"NLTK initialization failed: {e}")
+        return False
 
 def _get_kw():
     global _embedder, _kw
@@ -98,18 +104,43 @@ def extract_keyphrases(raw_text: str, top_n: int = 15) -> List[str]:
         print(f"Model loading failed: {e}")
         return []
 
-    # 1) spaCy noun chunks (short) + proper nouns
+    # 1) NLTK noun chunks + proper nouns
     try:
-        doc = _get_nlp()(txt)
-        np_chunks = {c.text.strip() for c in doc.noun_chunks if len(c) <= 6}
-        propn_tokens = set()
-        for sent in doc.sents:
-            tokens = [t.text for t in sent if t.pos_ == "PROPN"]
-            if tokens:
-                propn_tokens.add(" ".join(tokens).strip())
-        candidates: Set[str] = {c for c in (np_chunks | propn_tokens) if not _is_filler(c)}
+        if not _get_nlp():
+            candidates = set()
+        else:
+            tokens = word_tokenize(txt)
+            pos_tags = pos_tag(tokens)
+            
+            # Extract noun phrases (simplified)
+            np_chunks = set()
+            current_chunk = []
+            
+            for token, pos in pos_tags:
+                if pos.startswith('NN'):  # Noun
+                    current_chunk.append(token)
+                else:
+                    if current_chunk:
+                        chunk_text = " ".join(current_chunk).strip()
+                        if len(current_chunk) <= 6 and not _is_filler(chunk_text):
+                            np_chunks.add(chunk_text)
+                        current_chunk = []
+            
+            # Add final chunk
+            if current_chunk:
+                chunk_text = " ".join(current_chunk).strip()
+                if len(current_chunk) <= 6 and not _is_filler(chunk_text):
+                    np_chunks.add(chunk_text)
+            
+            # Extract proper nouns
+            propn_tokens = set()
+            for token, pos in pos_tags:
+                if pos == 'NNP':  # Proper noun
+                    propn_tokens.add(token)
+            
+            candidates: Set[str] = {c for c in (np_chunks | propn_tokens) if not _is_filler(c)}
     except Exception as e:
-        print(f"spaCy processing failed: {e}")
+        print(f"NLTK processing failed: {e}")
         candidates = set()
 
     # 2) KeyBERT semantic ranking

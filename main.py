@@ -8,15 +8,15 @@
 import subprocess
 import sys
 
-# Ensure spaCy model is installed
+# Initialize NLTK data
 try:
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    print("Installing spaCy model...")
-    subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
+    import nltk
+    nltk.download('punkt', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
+    nltk.download('maxent_ne_chunker', quiet=True)
+    nltk.download('words', quiet=True)
+except Exception as e:
+    print(f"NLTK initialization warning: {e}")
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
