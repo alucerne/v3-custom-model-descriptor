@@ -66,7 +66,7 @@ SubCategory: {sub_category or ""}
 
 {content_context}
 
-Use the related information to recommend three improved names that will be used by a large language classification model to analyze intent using urls and domain traffic.
+Use the related information to recommend three improved names that will be used by a large language classification model to analyze intent using urls and domain traffic. IMPORTANT: Generate names that are readable and properly formatted with spaces between words (e.g., "Roofing System Installation" not "RoofingSystemInstallationAndRepairIntent").
 Recommend a two sentence description of the service using related LSI keywords and SEO best practices specific to the service. IMPORTANT: Use specific keyphrases from the EXTRACTED KEYPHRASES list in your description. Start with "This intent represents interest in..." and focus on technical/business aspects, not marketing language. The second sentence should start with "It encompasses..." and list specific implementation details. Make descriptions comprehensive and detailed - include specific implementation details, methodologies, and technical capabilities. Do not include details about the audience.
 
 {validation_rules}
@@ -187,7 +187,7 @@ Category/SubCategory: {category or ""} / {sub_category or ""}
 
 {content_context}
 
-Use the related information to recommend three improved names that will be used by a large language classification model to analyze intent using urls and domain traffic.
+Use the related information to recommend three improved names that will be used by a large language classification model to analyze intent using urls and domain traffic. IMPORTANT: Generate names that are readable and properly formatted with spaces between words (e.g., "Roofing System Installation" not "RoofingSystemInstallationAndRepairIntent").
 Recommend a two sentence description using related LSI keywords and SEO best practices specific to the topic. IMPORTANT: Use specific keyphrases from the EXTRACTED KEYPHRASES list in your description. Start with "This intent represents interest in..." and focus on technical/business aspects, not marketing language. The second sentence should start with "It encompasses..." and list specific implementation details. Make descriptions comprehensive and detailed - include specific implementation details, methodologies, and technical capabilities. Do not include details about the audience.
 
 {validation_rules}
@@ -263,9 +263,44 @@ def parse_structured_response(response: str, field: str) -> str:
             return line[len(f"{field}:"):].strip()
     return ""
 
+def format_name(name: str) -> str:
+    """
+    Format a name by adding spaces before capital letters and cleaning up formatting.
+    Example: 'RoofingSystemInstallationAndRepairIntent' -> 'Roofing System Installation And Repair Intent'
+    """
+    if not name:
+        return name
+    
+    # Add space before capital letters (except the first character)
+    # Use a simpler approach that works with older Python versions
+    formatted = ''
+    for i, char in enumerate(name):
+        if i > 0 and char.isupper():
+            # Check if previous character is also uppercase (acronym) or lowercase
+            prev_char = name[i-1]
+            if prev_char.isupper() and i < len(name) - 1 and name[i+1].islower():
+                # This is the start of a new word after an acronym
+                formatted += ' ' + char
+            elif prev_char.islower():
+                # This is the start of a new word after lowercase
+                formatted += ' ' + char
+            else:
+                # This is part of an acronym, don't add space
+                formatted += char
+        else:
+            formatted += char
+    
+    # Clean up multiple spaces
+    formatted = re.sub(r'\s+', ' ', formatted)
+    
+    # Remove common suffixes that shouldn't be in the name
+    formatted = re.sub(r'\s+(Intent|Service|System|Platform|Tool|Solution)$', '', formatted, flags=re.IGNORECASE)
+    
+    return formatted.strip()
+
 def extract_names_from_response(response: str) -> List[str]:
     """
-    Extract names from the structured response.
+    Extract names from the structured response and format them properly.
     """
     names = []
     lines = response.split('\n')
@@ -274,7 +309,9 @@ def extract_names_from_response(response: str) -> List[str]:
         if line.startswith("NAME") and ":" in line:
             name = line.split(":", 1)[1].strip()
             if name:
-                names.append(name)
+                # Format the name to add proper spacing
+                formatted_name = format_name(name)
+                names.append(formatted_name)
     return names[:3]  # Return up to 3 names
 
 def generate_fallback_description(topic: str, lens: str, bank: Dict) -> str:
@@ -335,6 +372,8 @@ def write_name(topic: str, lens: str, category: Optional[str], sub_category: Opt
         
         # Create the full prompt with system message
         full_prompt = f"""You are an intent classification specialist. Follow the exact format requested in the prompt. Be specific and concise.
+
+IMPORTANT NAME FORMATTING: Generate names that are readable and properly formatted with spaces between words. Avoid camelCase or concatenated words. Use natural language formatting like "Roofing System Installation" instead of "RoofingSystemInstallationAndRepairIntent".
 
 {prompt}"""
         
