@@ -37,6 +37,7 @@ app.add_middleware(
         "http://localhost:3001", 
         "http://localhost:3002", 
         "http://localhost:3003",
+        "https://spark.audiencelab.io",
         "https://spark-ai-git-staging-deeeps-projects-8d9261fd.vercel.app",
         "https://sparkv3.vercel.app",
         "https://sparkv3-git-main-deeeps-projects-8d9261fd.vercel.app"
