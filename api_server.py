@@ -21,9 +21,16 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
+    allow_origins=[
+        "https://spark.audiencelab.io",
+        "https://sparkv3.vercel.app", 
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -110,6 +117,16 @@ async def health_check():
         "status": "healthy",
         "timestamp": time.time(),
         "service": "SPARK AI Audience Segment Search"
+    }
+
+@app.get("/custom-model-descriptor-health")
+async def custom_model_descriptor_health():
+    """Health check endpoint for custom model descriptor service."""
+    return {
+        "ok": True,
+        "status": "healthy",
+        "timestamp": time.time(),
+        "service": "Custom Model Descriptor"
     }
 
 if __name__ == "__main__":
