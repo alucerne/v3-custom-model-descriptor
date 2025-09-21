@@ -7,6 +7,7 @@
 
 import subprocess
 import sys
+import time
 
 # Initialize NLTK data
 try:
@@ -112,6 +113,16 @@ class PipelineResponse(BaseModel):
 @app.get("/health")
 async def health():
     return {"ok": True}
+
+@app.get("/custom-model-descriptor-health")
+async def custom_model_descriptor_health():
+    """Health check endpoint for custom model descriptor service."""
+    return {
+        "ok": True,
+        "status": "healthy",
+        "timestamp": time.time(),
+        "service": "Custom Model Descriptor"
+    }
 
 # --------------------------
 # Direct Keyword Extraction
